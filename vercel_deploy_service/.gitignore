@@ -1,0 +1,4 @@
+.env
+dist
+node_modules
+googe-api-keys-cred.json

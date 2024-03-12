@@ -7,6 +7,9 @@ import { generate } from './generate';
 import { uploadFile } from './googleDrive';
 import { createClient } from 'redis';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import status from './db_models/status';
+import project from './db_models/project';
 
 const publisher = createClient();
 publisher.connect();
@@ -45,24 +48,33 @@ app.post('/deploy', async (req, res) => {
 
     try {
         // upload clonned repo from server to googleDrive can use aws or any other s3 for efficiency
-        await uploadFile(id, pathOfDir);
+        const projectFolderId = await uploadFile(id, pathOfDir);
+        
+        // put project folder id in mongodb;
+        const newProject = await project.create({
+            github: repoUrl,
+            projectId: id,
+            folderId: projectFolderId,
+        });
 
         console.log("Files uploaded");
     } catch (error) {
         console.log("Unable to uplaod files");
+        return res.status(200).json({
+            msg: "Unable to upload repository",
+        });
     }
 
-    // push id to sqs queue or redis q or rabit q
-    // queueData = {
-        // id: 'dklsj',
-        // env: ['MONGO_URL jlfiejkjl;sejijlsjefljesf[', APIKEY ;sjiejfs;jfisoe;jshifjsio;e]
-    // }
-    publisher.lPush("build-queue", id);
+    await publisher.lPush("build-queue", id);
 
     // similar to,
     // INSERT => SQL
     // .create => MongoDB
-    // publisher.hSet("status", id, "uploaded"); // on redis db set is used to store , ig it is not good to use redis db
+    // await publisher.hSet("status", id, "uploaded"); // on redis db set is used to store , ig it is not good to use redis db
+    const projectStatus = await status.create({
+        projectId: id,
+        status: "Uploaded",
+    })
 
     res.json({id: id});
 });
@@ -73,8 +85,15 @@ app.get('/status', async (req, res) => {
     // res.json({
     //     status: response,
     // })
+    const response = await status.findOne({ projectId: id });
+    res.json({
+        status: response?.status,
+    });
 })
 
-app.listen(3000, () => {
+app.listen(3000, async () => {
+    mongoose.connect(process.env.MONGODB_URL || '')
+    .then(() => console.log("MongoDB connected"))
+    .catch((err: Error) => console.log("Error while connecting mongodb.", err));
     console.log("App listening to port: 3000");
 });

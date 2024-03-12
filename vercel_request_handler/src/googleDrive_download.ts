@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 
-export async function downloadDriveFolder(id: string) {
+export async function downloadDriveFolder(id:string, projectBuildFolderId: string) {
     const drive = google.drive({
         version: 'v3',
         auth: new google.auth.GoogleAuth({
@@ -25,24 +25,8 @@ export async function downloadDriveFolder(id: string) {
         } else {
             console.log(`Output directory '${outputDir}' already exists.`);
         }
-
-        // vercel folder id of drive
-        const searchResult = await drive.files.list({
-            q: `'${process.env.VERCEL_FOLDER_ID}' in parents and (name contains '${id}' or fullText contains '${id}')`,
-            fields: 'files(id, name, mimeType)',
-        });
-
-        const parentFolder = searchResult.data.files || [];
-        const parentFolderId = parentFolder[0].id;
-        const parentFolderName = parentFolder[0].name;
-        console.log("Parent folder details: Name: " + parentFolderName);
-
-        const buildFolderId = await drive.files.list({
-            q: `'${parentFolderId}' in parents and (name contains 'build' or fullText contains 'build')`,
-            fields: 'files(id, name, mimeType)',
-        });
-
-        await downloadItem(buildFolderId.data.files?.[0].id || '', path.join(__dirname, 'output'));
+        
+        await downloadItem(projectBuildFolderId, path.join(__dirname, 'output'));
     } catch (error) {
         console.log("Error while retrieving project", error);
     }

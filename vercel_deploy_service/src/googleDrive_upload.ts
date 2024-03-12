@@ -2,6 +2,7 @@ import fs from 'fs';
 import { google } from 'googleapis';
 import path from 'path';
 import mime from 'mime-types';
+import project from './db_models/project';
 
 interface FileMetadata {
     name: string;
@@ -9,7 +10,7 @@ interface FileMetadata {
     parents?: string[];
 }
 
-export async function uploadFile(id: string, pathOfDir: string, parentId?: string) {
+export async function uploadFile(id: string, pathOfDir: string) {
     // configure drive
     const drive =  google.drive({
         version: 'v3',
@@ -19,27 +20,13 @@ export async function uploadFile(id: string, pathOfDir: string, parentId?: strin
         })
     });
 
-    // creating metadata for main directory, here parents id folder id where we want to upload our clonned repo // vercel on google drive
-    const mainDirFolder: FileMetadata = {
-        name: id,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [`${process.env.VERCEL_FOLDER_ID}`],
-    }
-
     try {
         // upload to drive // project folder in google drive  
-        const subfolder = await drive.files.list({
-            q: `'${process.env.VERCEL_FOLDER_ID}' in parents and (name contains '${id}' and fullText contains '${id}')`,
-            fields: 'files(id, name, mimeType)',
-        })
+        const getProject = await project.findOne({
+            projectId: id,
+        });
+        const projectDirFolderId = getProject?.folderId;
 
-        // latest added // project lnhat;
-        const projectDirFolder = subfolder.data.files || [];
-        const projectDirFolderId = projectDirFolder[0].id;
-        
-        // const projectDirFolderName = projectDirFolder[0].name;
-        // console.log("Name: " + projectDirFolderName + " Id: " + projectDirFolderId);        
-        
         // create build folder;
         const createBuildFolder: FileMetadata = {
             name: 'build',
@@ -52,23 +39,23 @@ export async function uploadFile(id: string, pathOfDir: string, parentId?: strin
             fields: 'id, name',
         })
 
+        const updateProjectDetails = await project.updateOne({ projectId: id }, {
+            buildFolderId: createdBuildFolder.data.id,
+        })
+
         console.log('Uploading inside build folder with name: ' + createdBuildFolder.data.name);
         
         // upload directory's files
         await uploadDir(pathOfDir, createdBuildFolder.data.id || '');
 
     } catch (error) {
-        console.log("Error in creating main directory.");
+        return console.log("Error in creating main directory.");
     }
 
     async function uploadDir(pathOfDir: string, parentId?: string) {
         const files = fs.readdirSync(pathOfDir); // to  read everything inside a directory
-        // console.log("Files in dir: ", files);
 
         for (const file of files) {
-            // skip '.git' folder
-            // if(file === ".git") continue;
-
             const filePath = path.join(pathOfDir, file);
             const fileStat = fs.statSync(filePath);
 
@@ -86,7 +73,6 @@ export async function uploadFile(id: string, pathOfDir: string, parentId?: strin
                         fields: 'id, name',
                     });
                     
-                    // console.log("INFO: ", filePath, createdFolder.data.id);
                     console.log("Folder created:", createdFolder.data.name);
                     
                     //recursively upload subdirectories and its files
@@ -98,11 +84,11 @@ export async function uploadFile(id: string, pathOfDir: string, parentId?: strin
             else {
                 // if current file is not directory but any file
                 const mimeType = mime.lookup(filePath) || 'application/octet-stream';
-
                 const fileMetadata: FileMetadata = {
                     name: file,
                     parents: [parentId?parentId:''],
                 }
+                
                 try {
                     const createdFile = await drive.files.create({
                         requestBody: fileMetadata,

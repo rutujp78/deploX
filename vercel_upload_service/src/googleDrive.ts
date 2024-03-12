@@ -11,7 +11,7 @@ interface FileMetadata {
 
 export async function uploadFile(id: string, pathOfDir: string) {
     // configure drive
-    const drive =  google.drive({
+    const drive = google.drive({
         version: 'v3',
         auth: new google.auth.GoogleAuth({
             keyFile: `${process.env.GOOGLE_API_KEY_FILE}`,
@@ -32,11 +32,12 @@ export async function uploadFile(id: string, pathOfDir: string) {
             requestBody: mainDirFolder,
             fields: 'id, name',
         })
-        
         console.log("MAIN:", mainDirFolderCreated.data.name);
-        
+
         // upload directory's files
         await uploadDir(pathOfDir, mainDirFolderCreated.data.id ? mainDirFolderCreated.data.id : undefined);
+
+        return mainDirFolderCreated.data.id;
     } catch (error) {
         console.log("Error in creating main directory.", error);
     }
@@ -47,7 +48,7 @@ export async function uploadFile(id: string, pathOfDir: string) {
 
         for (const file of files) {
             // skip '.git' folder
-            if(file === ".git") continue;
+            if (file === ".git") continue;
 
             const filePath = path.join(pathOfDir, file);
             const fileStat = fs.statSync(filePath);
@@ -65,14 +66,14 @@ export async function uploadFile(id: string, pathOfDir: string) {
                         requestBody: folder,
                         fields: 'id, name',
                     });
-                    
+
                     // console.log("INFO: ", filePath, createdFolder.data.id);
                     console.log("Folder created:", createdFolder.data.name);
-                    
+
                     //recursively upload subdirectories and its files
                     await uploadDir(filePath, createdFolder.data.id ? createdFolder.data.id : undefined);
                 } catch (error) {
-                    console.log("Error in creating directory."); 
+                    console.log("Error in creating directory.");
                 }
             }
             else {
@@ -81,7 +82,7 @@ export async function uploadFile(id: string, pathOfDir: string) {
 
                 const fileMetadata: FileMetadata = {
                     name: file,
-                    parents: [parentId?parentId:''],
+                    parents: [parentId ? parentId : ''],
                 }
                 try {
                     const createdFile = await drive.files.create({

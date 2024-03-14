@@ -28,7 +28,12 @@ app.post('/deploy', async (req, res) => {
     const pathOfDir = path.join(__dirname, 'output', id);
 
     // git clone repo to server
-    await simpleGit().clone(repoUrl, pathOfDir);
+    try {
+        await simpleGit().clone(repoUrl, pathOfDir);
+    } catch (error) {
+        console.log("Please enter a valid github repository url");
+        return res.status(404).send({msg: "Please enter a valid github repository url"})
+    }
 
     console.log("Uploading Files");
     

@@ -34,12 +34,12 @@ async function main() {
         if (id !== null) {
             // Get project from drive
             console.log("Downloading project");
-            // await downloadDriveFolder(id.element);
+            await downloadDriveFolder(id.element);
             console.log("Project downloaded");
 
             // build project men
             console.log("Building project");
-            // await buildProject(id.element);
+            await buildProject(id.element);
             console.log("Built project");
 
             // upload project to drive again men

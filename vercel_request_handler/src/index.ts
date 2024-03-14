@@ -28,11 +28,11 @@ app.get("/*", async (req, res, next) => {
         const id = host.split(".")[0];
         const filePath = req.path;
 
-        const getProject = await project.findOne({
+        const getProject = await status.findOne({
             projectId: id
         });
 
-        if (!getProject) {
+        if (!getProject || getProject.status !== 'Deployed') {
             return res.send({
                 msg: `No such project with id: ${id} is deployed!`,
             })
@@ -56,22 +56,25 @@ app.listen(3001, () => {
     console.log("App listening on port: " + 3001);
 
     async function dowloadBuildFolder() {
-        // update downloadDriveFolder use mongoDB
-        const id = await subscriber.brPop("deploy-queue", 0);
-    
-        if(id !== null) {
-            const getProject = await project.findOne({
-                projectId: id.element
-            });
+        while(true) {
+            // update downloadDriveFolder use mongoDB
+            const id = await subscriber.brPop("deploy-queue", 0);
         
-            const projectBuildFolderId = getProject?.buildFolderId || '';
+            if(id !== null) {
+                const getProject = await project.findOne({
+                    projectId: id.element
+                });
+            
+                const projectBuildFolderId = getProject?.buildFolderId || '';
+            
+                // Get the folder ID associated with the project (replace with your logic)
+                await downloadDriveFolder(id.element, projectBuildFolderId); // Implement logic to fetch build folder
+                console.log(`Project ${id.element} is ready to serve.`);
         
-            // Get the folder ID associated with the project (replace with your logic)
-            await downloadDriveFolder(id.element, projectBuildFolderId); // Implement logic to fetch build folder
-    
-            const projectStatus = await status.updateOne({ projectId: id.element}, {
-                status: 'deployed',
-            });
+                const projectStatus = await status.updateOne({ projectId: id.element}, {
+                    status: 'deployed',
+                });
+            }
         }
     }
     

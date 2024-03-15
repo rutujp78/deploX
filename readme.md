@@ -49,22 +49,24 @@ This application leverages a microservices architecture for improved scalability
 
 ## Demo
 
-<img src="" alt="Landing Page" width="720"/>
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/15c14d73-4d00-484d-aa16-380fff1b860c" alt="Landing Page" width="540"/>
 
 *Landing Page*
 
-<img src="" alt="Register Popup" width="720"/>
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/62f15550-9c5f-41c4-bdce-2013153a94ee" alt="Register Popup" width="540"/>
 
 *Uploading project*
 
-<img src="" alt="Signup Popup" width="720"/>
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/f242b727-b7fa-48c2-8f81-5a76f97eb816" alt="Signup Popup" width="540"/>
 
 *Deploying project*
 
-<img src="" alt="View Pin" width="720"/>
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/f40ec5ea-183a-4998-bd29-9c6acffd32c7" alt="View Pin" width="540"/>
 
 *Deployed project*
 
 ## Architecture
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/e07ce62b-2276-4bb7-a771-c6469cf3fd6e" alt="architecture" width="540" />
 
-<img src="" alt="architecture" width="720" />
+## MongoDB Collection Schema
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/74ecb2e7-90e9-4365-917f-0842268c9c94" width="360" />

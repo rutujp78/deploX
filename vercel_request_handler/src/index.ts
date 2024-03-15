@@ -72,7 +72,7 @@ app.listen(3001, () => {
                 console.log(`Project ${id.element} is ready to serve.`);
         
                 const projectStatus = await status.updateOne({ projectId: id.element}, {
-                    status: 'deployed',
+                    status: 'Deployed',
                 });
             }
         }

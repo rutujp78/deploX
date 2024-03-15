@@ -24,8 +24,8 @@ const Landing = () => {
     const handleEnvVarChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const updatedEnvVars = [...envVars];
         updatedEnvVars[index] = { ...updatedEnvVars[index] }; // Clone object
-        if(e.target.name === 'name') updatedEnvVars[index].name = e.target.value.trim();
-        else if(e.target.name === 'value') updatedEnvVars[index].value = e.target.value.trim();
+        if (e.target.name === 'name') updatedEnvVars[index].name = e.target.value.trim();
+        else if (e.target.name === 'value') updatedEnvVars[index].value = e.target.value.trim();
         setEnvVars(updatedEnvVars);
     };
 
@@ -35,24 +35,24 @@ const Landing = () => {
         const formattedEnvVars: string[] = envVars.map((varString) => {
             const { name, value } = varString; // Destructure directly
             return `${name} ${value}`;
-          });
-      
-          const res = await axios.post(`${backendUrl}/deploy`, {
+        });
+
+        const res = await axios.post(`${backendUrl}/deploy`, {
             repoUrl: gitRepoUrl,
             env: formattedEnvVars,
-          });
-          console.log(res.data.id);
+        });
+        //   console.log(res.data.id);
         setUploadId(res.data.id);
         setUploading(false);
 
         const interval = setInterval(async () => {
-            const getProjectStatus = await axios.get(`${backendUrl}/status?id=${uploadId}`);
+            const getProjectStatus = await axios.get(`${backendUrl}/status?id=${res.data.id}`);
 
             if (getProjectStatus.data.status === 'Deployed') {
                 clearInterval(interval);
                 setDeployed(true);
             }
-        }, 5000);
+        }, 3000);
     }
 
     return (
@@ -108,7 +108,7 @@ const Landing = () => {
                                 className='button'
                                 type='submit'
                             >
-                                {uploadId ? `Deploying ${uploadId}` : uploading ? 'Uploading' : 'Upload'}
+                                {uploadId ? `Deploying (${uploadId})` : uploading ? 'Uploading' : 'Upload'}
                             </button>
                         </div>
                     </div>

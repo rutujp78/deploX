@@ -1,6 +1,14 @@
 import { google } from 'googleapis';
 import path from 'path';
 import fs from 'fs';
+import { createClient } from 'redis';
+
+const publisher = createClient();
+publisher.connect();
+
+async function publishLog(projectId: string, log: string) {
+    await publisher.publish(`logs:${projectId}`, log);
+}
 
 export async function downloadDriveFolder(id: string) {
     const drive = google.drive({
@@ -72,10 +80,16 @@ export async function downloadDriveFolder(id: string) {
             // console.log("donwloadStream: ", downloadStream);
 
             console.log("Downloading file: " + file.data.name);
-
+            
             downloadStream.data.pipe(destinationFile)
-            .on('finish', () => console.log("Downloaded file: " + file.data.name + " in " + downloadPath))
-            .on('error', (err: Error) => console.error("Error downloading file: ", file.data.name, err));
+            .on('finish', () => {
+                console.log("Downloaded file: " + file.data.name + " in " + downloadPath);
+                publishLog(id, 'Downloading file: ' + file.data.name);
+            })
+            .on('error', (err: Error) => {
+                console.error("Error downloading file: " + file.data.name, err)
+                publishLog(id, 'Error downloading file:' + file.data.name);
+            });
         }
     }
 

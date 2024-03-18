@@ -1,5 +1,13 @@
 import child_process from 'child_process';
 import path from 'path';
+import { createClient } from 'redis';
+
+const publisher = createClient();
+publisher.connect();
+
+async function publishLog(projectId: string, log: string) {
+    await publisher.publish(`logs:${projectId}`, log);
+}
 
 export function buildProject(id: string) {
     return new Promise((resolve) => {
@@ -10,9 +18,11 @@ export function buildProject(id: string) {
         const child = child_process.exec(command);
 
         child.stdout?.on('data', function (data) {
+            publishLog(id, data.toString());
             console.log(data);
         });
         child.stderr?.on('error', function(data) {
+            publishLog(id, data.toString());
             console.log('Error', data);
         });
         child.on('close', function() {

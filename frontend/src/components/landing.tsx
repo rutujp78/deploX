@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useState } from 'react';
+import { io } from 'socket.io-client';
 import './landing.css';
 import axios from 'axios';
 
@@ -8,12 +9,16 @@ interface EnvVar {
     value: string;
 }
 
+const socket = io("http://localhost:9001");
+
 const Landing = () => {
     const [gitRepoUrl, setgitRepoUrl] = useState<string>('');
-    const [uploading, setUploading] = useState<boolean>(false);
     const [uploadId, setUploadId] = useState<string>('');
-    const [deployed, setDeployed] = useState<boolean>(false);
     const [envVars, setEnvVars] = useState<EnvVar[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [logs, setLogs] = useState<string[]>([]);
+
+    const logContainerRef = useRef<HTMLElement>(null);
 
     const backendUrl = 'http://localhost:3000';
 
@@ -29,11 +34,20 @@ const Landing = () => {
         setEnvVars(updatedEnvVars);
     };
 
-    const handleBtn = async () => {
-        setUploading(true);
+    const isValidUrl: [boolean, string | null] = (() => {
+        if(!gitRepoUrl || gitRepoUrl.trim() === '') return [false, null];
+        const regex = new RegExp(
+            /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)(?:\/)?$/
+        );
+        return [regex.test(gitRepoUrl), "Enter valid Github Repository URL"];
+    })();
+
+    // dont know why but using useCallback didnt opening multiple websocket connection request, mejik ;)
+    const handleBtn = useCallback(async () => {
+        setLoading(true);
 
         const formattedEnvVars: string[] = envVars.map((varString) => {
-            const { name, value } = varString; // Destructure directly
+            const { name, value } = varString;
             return `${name} ${value}`;
         });
 
@@ -41,19 +55,31 @@ const Landing = () => {
             repoUrl: gitRepoUrl,
             env: formattedEnvVars,
         });
-        //   console.log(res.data.id);
-        setUploadId(res.data.id);
-        setUploading(false);
 
-        const interval = setInterval(async () => {
-            const getProjectStatus = await axios.get(`${backendUrl}/status?id=${res.data.id}`);
+        const newUploadId: string = res.data.id;
+        setUploadId(newUploadId);
 
-            if (getProjectStatus.data.status === 'Deployed') {
-                clearInterval(interval);
-                setDeployed(true);
-            }
-        }, 3000);
-    }
+        console.log(`Subscribing to logs:${newUploadId}`);
+        socket.emit('subscribe', `logs:${newUploadId}`);
+    }, [gitRepoUrl, envVars]);
+
+    const handleSocketIncomingMsg = useCallback((msg: string) => {
+        const log = msg;
+        setLogs((prev) => [...prev, log]);
+        logContainerRef.current?.scrollIntoView({ behavior: 'smooth'});
+        if(log === 'Deployed project') {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+      socket.on('message', handleSocketIncomingMsg);
+    
+      return () => {
+        socket.off('message', handleSocketIncomingMsg);
+      }
+    }, [handleSocketIncomingMsg]);
+    
 
     return (
         <main>
@@ -80,7 +106,7 @@ const Landing = () => {
                                             type="text"
                                             name='name'
                                             placeholder={`MY_VAR`}
-                                            value={varString.name} // Access name directly
+                                            value={varString.name}
                                             onChange={(e) => handleEnvVarChange(index, e)}
                                         />
 
@@ -92,7 +118,7 @@ const Landing = () => {
                                             type="password"
                                             name='value'
                                             placeholder="Variable Value"
-                                            value={varString.value} // Access value directly
+                                            value={varString.value}
                                             onChange={(e) => handleEnvVarChange(index, e)}
                                         />
 
@@ -104,11 +130,11 @@ const Landing = () => {
                             </button>
                             <button
                                 onClick={handleBtn}
-                                disabled={uploadId !== '' || uploading}
+                                disabled={!isValidUrl[0] || loading}
                                 className='button'
                                 type='submit'
                             >
-                                {uploadId ? `Deploying (${uploadId})` : uploading ? 'Uploading' : 'Upload'}
+                                {loading ? `Deploying (${uploadId})` : "Deploy"}
                             </button>
                         </div>
                     </div>
@@ -116,29 +142,31 @@ const Landing = () => {
 
             </div>
 
-            {deployed &&
-                <div className="card">
-                    <div className="card-header">
-                        <h3 className='card-title'>Deployment Status</h3>
-                        <p className='card-description'>Your website is successfully deployed!</p>
-                    </div>
-
-                    <div className="card-content">
-                        <div className="card-content-inner2">
-                            <label htmlFor="deployedGitrepoInput">Deployed URL</label>
-                            <input className='input' type="text" name='gitrepoInput' value={`http://${uploadId}.localhost:3000`} readOnly={true} />
-                        </div>
-                        <br />
-                        <button
-                            className='button button-secondary'
+            {uploadId && (
+                <div className="previewLink">
+                    <p>Preview URL:{" "}
+                        <a 
+                            target='_blank'
+                            href={`http://${uploadId}.localhost:3001`}
                         >
-                            <a href={`http://${uploadId}.localhost:3001`} target="_blank">
-                                Visit Website
-                            </a>
-                        </button>
-                    </div>
+                            {`http://${uploadId}.localhost:3001`}
+                        </a>
+                    </p>
                 </div>
-            }
+            )}
+            {logs.length > 0 && (
+                <div className="logsContainer">
+                    <pre className="preFormat">
+                        {logs.map((log, i) => (
+                            <code
+                                ref={logs.length - 1 === i ? logContainerRef : undefined}
+                                key={i}
+                            >{`> ${log}`}
+                            </code>
+                        ))}
+                    </pre>
+                </div>
+            )}
         </main>
     )
 }

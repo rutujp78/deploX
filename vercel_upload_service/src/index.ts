@@ -8,30 +8,44 @@ import { uploadFile } from './googleDrive';
 import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import status from './db_models/status';
 import project from './db_models/project';
+import { Server } from 'socket.io';
+import { Redis } from 'ioredis';
 
 const publisher = createClient();
 publisher.connect();
+const subscriber = new Redis();
+
+const io = new Server({ 
+    cors: {
+        origin: '*',
+    }
+});
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 dotenv.config();
 
+async function publishLog(projectId: string, log: string) {
+    await publisher.publish(`logs:${projectId}`, log);
+}
+
 app.post('/deploy', async (req, res) => {
-    const repoUrl = req.body.repoUrl; // github.com/project
-    const id = generate(); // ex: 123ab
+    const repoUrl = req.body.repoUrl;
+    const id = generate();
     const env = req.body.env;
 
-    // D:\projects\vercel_clone\vercel\build\output\randomStr\
     const pathOfDir = path.join(__dirname, 'output', id);
 
-    // git clone repo to server
+    res.json({id: id});
+
     try {
+        publishLog(id, 'Clonning git repository');
         await simpleGit().clone(repoUrl, pathOfDir);
+        publishLog(id, 'Clonned git repository');
     } catch (error) {
-        console.log("Please enter a valid github repository url");
+        // console.log("Please enter a valid github repository url");
         return res.status(404).send({msg: "Please enter a valid github repository url"})
     }
 
@@ -52,49 +66,55 @@ app.post('/deploy', async (req, res) => {
     }
 
     try {
-        // upload clonned repo from server to googleDrive can use aws or any other s3 for efficiency
+        publishLog(id, 'Uploading repository to google drive');
         const projectFolderId = await uploadFile(id, pathOfDir);
         
-        // put project folder id in mongodb;
         const newProject = await project.create({
             github: repoUrl,
             projectId: id,
             folderId: projectFolderId,
+            status: 'Deploying'
         });
-
+        
+        publishLog(id, 'Uploaded repository to google drive');
         console.log("Files uploaded");
-    } catch (error) {
-        console.log("Unable to uplaod files");
-        return res.status(200).json({
+    } catch (error: any) {
+        publishLog(id, 'Error: Unable to upload files');
+        console.log("Unable to upload files");
+        return res.status(500).json({
             msg: "Unable to upload repository",
         });
     }
 
     await publisher.lPush("build-queue", id);
-
-    // similar to,
-    // INSERT => SQL
-    // .create => MongoDB
-    // await publisher.hSet("status", id, "uploaded"); // on redis db set is used to store , ig it is not good to use redis db
-    const projectStatus = await status.create({
-        projectId: id,
-        status: "Uploaded",
-    })
-
-    res.json({id: id});
+    publishLog(id, 'Project added to deploy queue');
 });
 
-app.get('/status', async (req, res) => {
-    const id = req.query.id;
-    // const response = await subscriber.hGet("status", id as string);
-    // res.json({
-    //     status: response,
-    // })
-    const response = await status.findOne({ projectId: id });
-    res.json({
-        status: response?.status,
-    });
+try {
+    io.listen(9001);
+    console.log('Socket server 9001 is running');
+} catch (error) {
+    console.error('Failed to start socket server:', error);
+}
+
+io.on('connection', socket => {
+    socket.on('subscribe', channel => {
+        socket.join(channel);
+        socket.emit('message', `Joined ${channel}`);
+    })
+
+    socket.on('error', error => console.log(error));
 })
+
+async function initRedisSubscribe() {
+    console.log("Subscribed to logs");
+    subscriber.psubscribe('logs:*');
+    subscriber.on('pmessage', (pattern, channel, message) => {
+        io.to(channel).emit('message', message);
+    })
+}
+
+initRedisSubscribe();
 
 app.listen(3000, async () => {
     mongoose.connect(process.env.MONGODB_URL || '')

@@ -5,14 +5,17 @@ import dotenv from 'dotenv';
 import project from './db_models/project';
 import mongoose from 'mongoose';
 import { createClient } from 'redis';
-import status from './db_models/status';
+import cors from 'cors';
 
+const publisher = createClient();
+publisher.connect();
 const subscriber = createClient();
 subscriber.connect();
 
 const app = express();
 dotenv.config();
 
+app.use(cors());
 app.use((req, res, next) => {
     const host = req.hostname;
     const id = host.split('.')[0];
@@ -21,6 +24,11 @@ app.use((req, res, next) => {
 })
 // app.use(express.static(path.join(__dirname, 'output', id)));
 
+
+async function publishLog(projectId: string, log: string) {
+    await publisher.publish(`logs:${projectId}`, log);
+}
+
 app.get("/*", async (req, res, next) => {
     try {
         // Extract host and id from the request
@@ -28,14 +36,14 @@ app.get("/*", async (req, res, next) => {
         const id = host.split(".")[0];
         const filePath = req.path;
 
-        const getProject = await status.findOne({
+        const getProject = await project.findOne({
             projectId: id
         });
 
         if (!getProject || getProject.status !== 'Deployed') {
             return res.send({
                 msg: `No such project with id: ${id} is deployed!`,
-            })
+            });
         }
 
         if (filePath === '/' || filePath === '/index.html') {
@@ -56,27 +64,31 @@ app.listen(3001, () => {
     console.log("App listening on port: " + 3001);
 
     async function dowloadBuildFolder() {
-        while(true) {
+        while (true) {
             // update downloadDriveFolder use mongoDB
             const id = await subscriber.brPop("deploy-queue", 0);
-        
-            if(id !== null) {
+
+            if (id !== null) {
                 const getProject = await project.findOne({
                     projectId: id.element
                 });
-            
+
                 const projectBuildFolderId = getProject?.buildFolderId || '';
-            
+
+                publishLog(id.element, 'Deploying project');
+
                 // Get the folder ID associated with the project (replace with your logic)
                 await downloadDriveFolder(id.element, projectBuildFolderId); // Implement logic to fetch build folder
                 console.log(`Project ${id.element} is ready to serve.`);
-        
-                const projectStatus = await status.updateOne({ projectId: id.element}, {
-                    status: 'Deployed',
-                });
+
+                const updateProject = await project.updateOne({ projectId: id.element }, {
+                    status: "Deployed"
+                })
+
+                publishLog(id.element, 'Deployed project');
             }
         }
     }
-    
+
     dowloadBuildFolder();
 })

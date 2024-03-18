@@ -3,6 +3,14 @@ import { google } from 'googleapis';
 import path from 'path';
 import mime from 'mime-types';
 import project from './db_models/project';
+import { createClient } from 'redis';
+
+const publisher = createClient();
+publisher.connect();
+
+async function publishLog(projectId: string, log: string) {
+    await publisher.publish(`logs:${projectId}`, log);
+}
 
 interface FileMetadata {
     name: string;
@@ -98,8 +106,10 @@ export async function uploadFile(id: string, pathOfDir: string) {
                         },
                         fields: 'id, name',
                     })
+                    publishLog(id, createdFile.data.name || '');
                     console.log("File created:", createdFile.data.name);
                 } catch (error) {
+                    publishLog(id, 'Error in uploading: ' + file);
                     console.log("Error in creating file: ", error);
                 }
             }

@@ -36,7 +36,7 @@ This application leverages a microservices architecture for improved scalability
    * Subscribes to the Redis queue for incoming project IDs.
    * Builds and deploys the project code based on the ID and retrieved information.
 
-3. **Request Service (Optional):**
+3. **Request Service:**
 
    * Handles incoming requests for deployed projects.
    * Uses the project ID to route requests to the appropriate deployed project instance.
@@ -48,25 +48,13 @@ This application leverages a microservices architecture for improved scalability
 * **Fault Isolation:** An issue in one service doesn't necessarily impact the others.
 
 ## Demo
-
-<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/15c14d73-4d00-484d-aa16-380fff1b860c" alt="Landing Page" width="540"/>
-
-*Landing Page*
-
-<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/62f15550-9c5f-41c4-bdce-2013153a94ee" alt="Register Popup" width="540"/>
-
-*Uploading project*
-
-<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/f242b727-b7fa-48c2-8f81-5a76f97eb816" alt="Signup Popup" width="540"/>
-
-*Deploying project*
-
-<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/f40ec5ea-183a-4998-bd29-9c6acffd32c7" alt="View Pin" width="540"/>
-
-*Deployed project*
+[Watch The Demo Video](https://drive.google.com/file/d/1gpAz63ce-H0-C0rhTPUvME5iZHR4LuJe/view?usp=sharing)
 
 ## Architecture
 <img src="https://github.com/rutujp78/vercel_clone/assets/76244494/e07ce62b-2276-4bb7-a771-c6469cf3fd6e" alt="architecture" width="540" />
 
+## Logs Architecture
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/5b309f65-acb2-4119-8e16-e06c613baf7f" alt="logs_architecture" width="540" />
+
 ## MongoDB Collection Schema
-<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/74ecb2e7-90e9-4365-917f-0842268c9c94" width="360" />
+<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/d702d18d-2f03-4dcc-9be5-79f6815e6dad" width="240" />

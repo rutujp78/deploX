@@ -20,7 +20,7 @@ interface FileMetadata {
 
 export async function uploadFile(id: string, pathOfDir: string) {
     // configure drive
-    const drive =  google.drive({
+    const drive = google.drive({
         version: 'v3',
         auth: new google.auth.GoogleAuth({
             keyFile: `${process.env.GOOGLE_API_KEY_FILE}`,
@@ -29,11 +29,18 @@ export async function uploadFile(id: string, pathOfDir: string) {
     });
 
     try {
-        // upload to drive // project folder in google drive  
-        const getProject = await project.findOne({
-            projectId: id,
+        const mainDirFolder: FileMetadata = {
+            name: id,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [`${process.env.VERCEL_FOLDER_ID}`],
+        };
+        //create projectid folder in vercel folder/bucket
+        const projectDirFolder = await drive.files.create({
+            requestBody: mainDirFolder,
+            fields: 'id, name',
         });
-        const projectDirFolderId = getProject?.folderId;
+        console.log("MAIN:", projectDirFolder.data.name);
+        const projectDirFolderId = projectDirFolder.data.id;
 
         // create build folder;
         const createBuildFolder: FileMetadata = {
@@ -41,19 +48,19 @@ export async function uploadFile(id: string, pathOfDir: string) {
             mimeType: 'application/vnd.google-apps.folder',
             parents: [`${projectDirFolderId}`]
         };
-
         const createdBuildFolder = await drive.files.create({
             requestBody: createBuildFolder,
             fields: 'id, name',
-        })
+        });
 
+        // update project details in mongodb
         const updateProjectDetails = await project.updateOne({ projectId: id }, {
+            folderId: projectDirFolderId, 
             buildFolderId: createdBuildFolder.data.id,
-        })
-
-        console.log('Uploading inside build folder with name: ' + createdBuildFolder.data.name);
+        });
         
         // upload directory's files
+        console.log('Uploading inside build folder with name: ' + createdBuildFolder.data.name);
         await uploadDir(pathOfDir, createdBuildFolder.data.id || '');
 
     } catch (error) {
@@ -80,13 +87,13 @@ export async function uploadFile(id: string, pathOfDir: string) {
                         requestBody: folder,
                         fields: 'id, name',
                     });
-                    
+
                     console.log("Folder created:", createdFolder.data.name);
-                    
+
                     //recursively upload subdirectories and its files
                     await uploadDir(filePath, createdFolder.data.id ? createdFolder.data.id : undefined);
                 } catch (error) {
-                    console.log("Error in creating directory."); 
+                    console.log("Error in creating directory.");
                 }
             }
             else {
@@ -94,9 +101,9 @@ export async function uploadFile(id: string, pathOfDir: string) {
                 const mimeType = mime.lookup(filePath) || 'application/octet-stream';
                 const fileMetadata: FileMetadata = {
                     name: file,
-                    parents: [parentId?parentId:''],
+                    parents: [parentId ? parentId : ''],
                 }
-                
+
                 try {
                     const createdFile = await drive.files.create({
                         requestBody: fileMetadata,
@@ -106,7 +113,7 @@ export async function uploadFile(id: string, pathOfDir: string) {
                         },
                         fields: 'id, name',
                     })
-                    publishLog(id, createdFile.data.name || '');
+                    publishLog(id, 'Uploading: ' + createdFile.data.name || '');
                     console.log("File created:", createdFile.data.name);
                 } catch (error) {
                     publishLog(id, 'Error in uploading: ' + file);

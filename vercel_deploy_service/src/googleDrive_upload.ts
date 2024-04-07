@@ -37,9 +37,9 @@ export async function uploadFile(id: string, pathOfDir: string) {
         const mainDirFolder: FileMetadata = {
             name: id,
             mimeType: 'application/vnd.google-apps.folder',
-            parents: [`${process.env.VERCEL_FOLDER_ID}`],
+            parents: [`${process.env.DEPLOX_FOLDER_ID}`],
         };
-        //create projectid folder in vercel folder/bucket
+        //create projectid folder in deplox folder/bucket
         const projectDirFolder = await drive.files.create({
             requestBody: mainDirFolder,
             fields: 'id, name',

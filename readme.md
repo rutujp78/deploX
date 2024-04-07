@@ -1,4 +1,4 @@
-# Vercel Clone - MERN Stack App
+# deploX - MERN Stack App
 
 This repository houses a full-stack application inspired by Vercel, built using the MERN stack (MongoDB, Express, React, Node.js). Additionally, it leverages Redis queues for asynchronous tasks and integrates with cloud storage solutions like Google Drive or AWS S3.
 

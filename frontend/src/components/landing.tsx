@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { useState } from 'react';
-import { io } from 'socket.io-client';
 import './landing.css';
 import axios from 'axios';
 
@@ -9,14 +8,12 @@ interface EnvVar {
     value: string;
 }
 
-const socket = io("http://localhost:9001");
-
 const Landing = () => {
     const [gitRepoUrl, setgitRepoUrl] = useState<string>('');
     const [uploadId, setUploadId] = useState<string>('');
     const [envVars, setEnvVars] = useState<EnvVar[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
-    const [logs, setLogs] = useState<string[]>([]);
+    const [logs, setLogs] = useState<Array<object>>([]);
 
     const logContainerRef = useRef<HTMLElement>(null);
 
@@ -35,7 +32,7 @@ const Landing = () => {
     };
 
     const isValidUrl: [boolean, string | null] = (() => {
-        if(!gitRepoUrl || gitRepoUrl.trim() === '') return [false, null];
+        if (!gitRepoUrl || gitRepoUrl.trim() === '') return [false, null];
         const regex = new RegExp(
             /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)(?:\/)?$/
         );
@@ -60,26 +57,28 @@ const Landing = () => {
         setUploadId(newUploadId);
 
         console.log(`Subscribing to logs:${newUploadId}`);
-        socket.emit('subscribe', `logs:${newUploadId}`);
+
+        logInt(newUploadId);
+
     }, [gitRepoUrl, envVars]);
 
-    const handleSocketIncomingMsg = useCallback((msg: string) => {
-        const log = msg;
-        setLogs((prev) => [...prev, log]);
-        logContainerRef.current?.scrollIntoView({ behavior: 'smooth'});
-        if(log === 'Deployed project') {
-            setLoading(false);
-        }
-    }, []);
+    function logInt(newUploadId: string) {
+        const logsInterval = setInterval(async () => {
+            const resp = await axios.get(`http://localhost:3000/logs/${newUploadId}`);
+            const fetchedLogs = resp.data.logs;
+            // console.log(fetchedLogs[0].log);
+            
+            setLogs(fetchedLogs);
+
+            if (fetchedLogs[fetchedLogs.length - 1].log === 'Project deployed') {
+                clearInterval(logsInterval);
+            }
+        }, 3000)
+    }
 
     useEffect(() => {
-      socket.on('message', handleSocketIncomingMsg);
-    
-      return () => {
-        socket.off('message', handleSocketIncomingMsg);
-      }
-    }, [handleSocketIncomingMsg]);
-    
+
+    }, [logs]);
 
     return (
         <main>
@@ -145,7 +144,7 @@ const Landing = () => {
             {uploadId && (
                 <div className="previewLink">
                     <p>Preview URL:{" "}
-                        <a 
+                        <a
                             target='_blank'
                             href={`http://${uploadId}.localhost:3001`}
                         >
@@ -161,9 +160,11 @@ const Landing = () => {
                             <code
                                 ref={logs.length - 1 === i ? logContainerRef : undefined}
                                 key={i}
-                            >{`> ${log}`}
+                            >{`> ${log.log}`}
                             </code>
-                        ))}
+                        )
+                        )}
+
                     </pre>
                 </div>
             )}

@@ -1,15 +1,17 @@
 import fs from 'fs';
-import { google } from 'googleapis';
 import path from 'path';
 import mime from 'mime-types';
 import project from './db_models/project';
-import { createClient } from 'redis';
-
-const publisher = createClient();
-publisher.connect();
+import producer from './index';
+import { google } from 'googleapis';
 
 async function publishLog(projectId: string, log: string) {
-    await publisher.publish(`logs:${projectId}`, log);
+    await producer.send({
+        topic: 'logs',
+        messages: [
+            { key: 'log', value: JSON.stringify({ project_id: projectId, log })},
+        ]
+    });
 }
 
 interface FileMetadata {
@@ -19,6 +21,9 @@ interface FileMetadata {
 }
 
 export async function uploadFile(id: string, pathOfDir: string) {
+    // connect kafka
+    producer.connect();
+
     // configure drive
     const drive = google.drive({
         version: 'v3',

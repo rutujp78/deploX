@@ -16,7 +16,9 @@ This comprehensive project is a full-stack web application inspired by Vercel, t
 * **Redis Queues:**
     * Using Redis queues for background processing or handling asynchronous tasks.
 * **Cloud Storage:**
-    * Using Google Drive (or AWS S3) for file storage and retrieval of project files orignial as well as built files.
+    * Using Google Drive (or AWS S3) for secure file storage and retrieval of project built files.
+* **Kafka and Clickhouse:**
+    * Using Kafka and Clickhouse to handle log service.
 
 ## Microservices Architecture
 
@@ -24,17 +26,16 @@ This application leverages a microservices architecture for improved scalability
 
 1. **Clone and Upload Service:**
 
-   * Fetches code from a GitHub repository upon receiving a request.
-   * Clones the repository locally on the server.
-   * Uploads the cloned code to a cloud storage solution (e.g., Google Drive or AWS S3).
    * Generates a unique identifier (ID) for the project.
    * Stores the project ID and relevant details (such as repository URL or project name) in a MongoDB database.
-   * Publishes the project ID to a Redis queue to signal deployment and request services.
+   * Publishes the project ID to a Redis queue to signal deployment service.
 
 2. **Deployment Service:**
 
    * Subscribes to the Redis queue for incoming project IDs.
-   * Builds and deploys the project code based on the ID and retrieved information.
+   * Clones the repository locally on the server.
+   * Builds and deploys(upload the built project files to Google Drive/AWS S3) the project code based on the ID and retrieved information.
+   * Publishes the project ID to a Redis queue to signal request service.
 
 3. **Request Service:**
 

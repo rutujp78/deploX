@@ -55,7 +55,7 @@ This application leverages a microservices architecture for improved scalability
 <img src="https://github.com/rutujp78/vercel_clone/assets/76244494/bf2e74b0-089c-4d6d-9732-0fc1e68d0d93" alt="architecture" width="540" />
 
 ## Logs Architecture
-<img src="https://github.com/rutujp78/vercel_clone/assets/76244494/5b309f65-acb2-4119-8e16-e06c613baf7f" alt="logs_architecture" width="540" />
+<img src="https://github.com/rutujp78/deploX/assets/76244494/5d610524-7d4c-4942-ba3a-4604fc190e38" alt="logs_architecture" width="540" />
 
 ## MongoDB Collection Schema
 <img src="https://github.com/rutujp78/vercel_clone/assets/76244494/d702d18d-2f03-4dcc-9be5-79f6815e6dad" width="240" />

@@ -1,12 +1,14 @@
 import child_process from 'child_process';
 import path from 'path';
-import { createClient } from 'redis';
-
-const publisher = createClient();
-publisher.connect();
+import producer from './index';
 
 async function publishLog(projectId: string, log: string) {
-    await publisher.publish(`logs:${projectId}`, log);
+    await producer.send({
+        topic: 'logs',
+        messages: [
+            { key: 'log', value: JSON.stringify({ project_id: projectId, log }) },
+        ],
+    });
 }
 
 export function buildProject(id: string) {

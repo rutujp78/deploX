@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import cors from 'cors';
+import Redis from 'ioredis';
 import dotenv from 'dotenv';
 import project from './db_models/project';
 import express from 'express';
@@ -8,13 +9,15 @@ import mongoose from 'mongoose';
 import { Kafka } from 'kafkajs';
 import { generate } from './generate';
 import { v4 as uuidv4 } from 'uuid';
-import { createClient as createClientRedis}  from 'redis';
+// import { createClient as createClientRedis}  from 'redis';
 import { createClient as createClientClickhouse} from '@clickhouse/client'
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 dotenv.config();
+const redisUri: string = process.env.REDIS_URI || '';
+const redisPublisher = new Redis(redisUri);
 
 const client = createClientClickhouse({
     host: process.env.CLICKHOUSE_HOST_URL,
@@ -37,8 +40,8 @@ const kafka = new Kafka({
     }
 });
 
-const publisher = createClientRedis();
-publisher.connect();
+// const publisher = createClientRedis();
+// publisher.connect();
 const consumer = kafka.consumer({ groupId: 'upload_service-logs-consumer' });
 
 app.post('/deploy', async (req, res) => {
@@ -55,7 +58,7 @@ app.post('/deploy', async (req, res) => {
     const data = { id: id, env: [...env] };
     const jsonString = JSON.stringify(data);
 
-    await publisher.lPush("build-queue", jsonString);
+    await redisPublisher.lpush("build-queue", jsonString);
 
     res.json({id: id});
 });

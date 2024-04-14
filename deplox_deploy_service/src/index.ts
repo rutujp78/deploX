@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import Redis from 'ioredis';
 import dotenv from 'dotenv';
 import project from './db_models/project';
 import mongoose from 'mongoose';
@@ -7,14 +8,17 @@ import simpleGit from 'simple-git';
 import { Kafka } from 'kafkajs';
 import { uploadFile } from './googleDrive_upload';
 import { buildProject } from './utls';
-import { createClient as createClientRedis } from 'redis';
+// import { createClient as createClientRedis } from 'redis';
 
 dotenv.config();
 
-const publisher = createClientRedis();
-publisher.connect();
-const subscriber = createClientRedis();
-subscriber.connect();
+// const publisher = createClientRedis();
+// publisher.connect();
+// const subscriber = createClientRedis();
+// subscriber.connect();
+const redisUri: string = process.env.REDIS_URI || '';
+const redisPublisher = new Redis(redisUri);
+const redisSubscriber = new Redis(redisUri);
 
 const kafka = new Kafka({
     clientId: process.env.KAFKA_CLI_ID,
@@ -36,17 +40,18 @@ async function publishLog(projectId: string, log: string) {
         messages: [
             { key: 'log', value: JSON.stringify({ project_id: projectId, log }) },
         ],
-    })
+    });
 }
 
 async function main() {
     await producer.connect();
 
     while (true) {
-        const queueData = await subscriber.brPop("build-queue", 0);
-
+        const queueData = await redisSubscriber.brpop("build-queue", 0);
+        
         if (queueData !== null) {
-            const data = JSON.parse(queueData.element); 
+            console.log(queueData);
+            const data = JSON.parse(queueData[1]); 
             const projectId = data.id;
             const env: string[] = data.env;
 
@@ -91,7 +96,7 @@ async function main() {
             console.log("Uploaded built project");
             publishLog(projectId, 'Upload complete');
 
-            publisher.lPush('deploy-queue', projectId);
+            redisPublisher.lpush('deploy-queue', projectId);
         }
     }
 }

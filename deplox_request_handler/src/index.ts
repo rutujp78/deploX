@@ -1,19 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 import cors from 'cors';
+import Redis from 'ioredis';
 import dotenv from 'dotenv';
 import express from 'express';
 import project from './db_models/project';
 import mongoose from 'mongoose';
 import { Kafka } from 'kafkajs';
-import { createClient as createClientRedis } from 'redis';
+// import { createClient as createClientRedis } from 'redis';
 import { downloadDriveFolder } from './googleDrive_download';
 
 const app = express();
 dotenv.config();
 
-const subscriber = createClientRedis();
-subscriber.connect();
+const redisUri: string = process.env.REDIS_URI || '';
+const redisSubscriber = new Redis(redisUri);
+// const subscriber = createClientRedis();
+// subscriber.connect();
 
 const kafka = new Kafka({
     clientId: process.env.KAFKA_CLI_ID,
@@ -88,26 +91,26 @@ app.listen(3001, async () => {
     async function dowloadBuildFolder() {
         while (true) {
             // update downloadDriveFolder use mongoDB
-            const id = await subscriber.brPop("deploy-queue", 0);
-
+            const id = await redisSubscriber.brpop("deploy-queue", 0);
             if (id !== null) {
+                console.log(id);
                 const getProject = await project.findOne({
-                    projectId: id.element
+                    projectId: id[1],
                 });
 
                 const projectBuildFolderId = getProject?.buildFolderId || '';
 
-                publishLog(id.element, 'Deploying project');
+                publishLog(id[1], 'Deploying project');
 
                 // Get the folder ID associated with the project (replace with your logic)
-                await downloadDriveFolder(id.element, projectBuildFolderId); // Implement logic to fetch build folder
-                console.log(`Project ${id.element} is ready to serve.`);
+                await downloadDriveFolder(id[1], projectBuildFolderId); // Implement logic to fetch build folder
+                console.log(`Project ${id[1]} is ready to serve.`);
 
-                const updateProject = await project.updateOne({ projectId: id.element }, {
+                const updateProject = await project.updateOne({ projectId: id[1] }, {
                     status: "Deployed"
                 })
 
-                publishLog(id.element, 'Project deployed');
+                publishLog(id[1], 'Project deployed');
             }
         }
     }

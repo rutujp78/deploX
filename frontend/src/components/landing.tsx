@@ -67,9 +67,9 @@ const Landing = () => {
             const resp = await axios.get(`http://localhost:3000/logs/${newUploadId}`);
             const fetchedLogs = resp.data.logs;
             // console.log(fetchedLogs[0].log);
-            
-            setLogs(fetchedLogs);
 
+            setLogs(fetchedLogs);
+            logContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
             if (fetchedLogs[fetchedLogs.length - 1].log === 'Project deployed') {
                 clearInterval(logsInterval);
             }
@@ -139,35 +139,33 @@ const Landing = () => {
                     </div>
                 </div>
 
+                {uploadId && (
+                    <div className="previewLink">
+                        <p>Preview URL:{" "}
+                            <a
+                                target='_blank'
+                                href={`http://${uploadId}.localhost:3001`}
+                            >
+                                {`http://${uploadId}.localhost:3001`}
+                            </a>
+                        </p>
+                    </div>
+                )}
+                {logs.length > 0 && (
+                    <div className="logsContainer">
+                        <pre className="preFormat">
+                            {logs.map((log, i) => (
+                                <code
+                                    ref={logs.length - 1 === i ? logContainerRef : undefined}
+                                    key={i}
+                                >{`> ${log.log}`}
+                                </code>
+                            )
+                            )}
+                        </pre>
+                    </div>
+                )}
             </div>
-
-            {uploadId && (
-                <div className="previewLink">
-                    <p>Preview URL:{" "}
-                        <a
-                            target='_blank'
-                            href={`http://${uploadId}.localhost:3001`}
-                        >
-                            {`http://${uploadId}.localhost:3001`}
-                        </a>
-                    </p>
-                </div>
-            )}
-            {logs.length > 0 && (
-                <div className="logsContainer">
-                    <pre className="preFormat">
-                        {logs.map((log, i) => (
-                            <code
-                                ref={logs.length - 1 === i ? logContainerRef : undefined}
-                                key={i}
-                            >{`> ${log.log}`}
-                            </code>
-                        )
-                        )}
-
-                    </pre>
-                </div>
-            )}
         </main>
     )
 }

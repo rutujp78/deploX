@@ -49,21 +49,62 @@ app.post('/deploy', async (req, res) => {
     const env = req.body.env;
     const repoUrl = req.body.repoUrl;
 
-    const newProject = await project.create({
-        github: repoUrl,
-        projectId: id,
-        status: 'Deploying'
-    });
+    try {
+        // get the size of repo
+        const { pathname } = new URL(repoUrl);
+        const [owner, repo] = pathname.split('/').slice(1);
 
-    const data = { id: id, env: [...env] };
-    const jsonString = JSON.stringify(data);
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+        const options = {
+            headers: {
+                'User-Agent': 'node.js',
+                'Accept': 'application/vnd.github.v3+json',
+            }
+        };
 
-    await redisPublisher.lpush("build-queue", jsonString);
+        const response = await fetch(apiUrl, options);
 
-    res.json({id: id});
+        if (!response.ok) {
+            // throw new Error(`HTTP error! Status: ${response.status}`);
+            return res.status(404).json({ msg: "Unable to fetch repository details" });
+        }
+
+        const repoData = await response.json();
+        const sizeInKilobytes = repoData.size;
+        const sizeInMegabytes = sizeInKilobytes / 1024;
+
+        console.log(`Repository size: ${sizeInMegabytes} MB`);
+
+        if (sizeInMegabytes > 500) {
+            return res.status(404).json({ msg: 'Repository size exceeds 500 MB.' });
+        }
+
+        console.log('Repository details:', repoData);
+
+        // add project to deploy queue
+        const newProject = await project.create({
+            github: repoUrl,
+            projectId: id,
+            status: 'Deploying'
+        });
+    
+    
+        const data = { id: id, env: [...env] };
+        const jsonString = JSON.stringify(data);
+    
+        await redisPublisher.lpush("build-queue", jsonString);
+        
+        // return the repsonse after adding to deploy queue
+        return res.status(200).json({id: id});
+
+    } catch (error) {
+        console.log(error);
+        return res.status(404).json({ msg: "Unable to deploy the project."});   
+    }
 });
 
 app.get('/logs/:project_id', async (req, res) => {
+    // get logs from clickhouse
     const project_id = req.params.project_id;
     const logs = await client.query({
         query: `SELECT event_id, project_id, log, timestamp from log_events where project_id = {project_id:String} order by timestamp`,

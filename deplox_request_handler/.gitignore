@@ -3,3 +3,4 @@ dist
 node_modules
 googe-api-keys-cred.json
 kafka.pem
+old.env

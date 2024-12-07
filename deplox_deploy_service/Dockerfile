@@ -12,8 +12,8 @@ WORKDIR /home/app
 
 COPY src src
 COPY package*.json .
-COPY kafka.pem kafka.pem
-COPY googe-api-keys-cred.json googe-api-keys-cred.json
+# COPY kafka.pem kafka.pem
+# COPY googe-api-keys-cred.json googe-api-keys-cred.json
 COPY tsconfig.json tsconfig.json
 COPY .env .env
 

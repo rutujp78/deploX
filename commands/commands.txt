@@ -1,0 +1,45 @@
+dockerCommands:
+# to build docker image
+docker build -t deplox_deploy_service .
+
+# to run docker image
+docker run it deplox_deploy_service
+# port mapping + env variable
+docker run it -p 3000:3000 -e PORT=3000 deplox_deploy_service
+
+# to get inside the container
+docker exec -it <cont_id> bash
+
+zookeeper:
+ .\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
+ broker:
+ .\bin\windows\kafka-server-start.bat .\config\server.properties
+
+docker kafka:
+docker network create kafka-network
+docker run --name zookeeper --network kafka-network -p 2181:2181 zookeeper
+docker run --name kafka --network kafka-network -p 9092:9092 apache/kafka
+
+Postgres:
+CREATE TABLE log_events (
+    event_id UUID PRIMARY KEY,
+    timestamps TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    project_id VARCHAR NOT NULL,
+    log TEXT NOT NULL
+);
+
+create INDEX idx_project_id ON log_events (project_id);
+
+INSERT INTO log_events (event_id, project_id, log) VALUES ($1, $2, $3)
+
+redis:
+sudo service redis-server start
+redis-cli
+
+localstack:
+./localstack start
+
+s3:
+awslocal s3api create-bucket --bucket deplox
+awslocal s3api list-buckets
+awslocal s3api list-objects --bucket deplox
